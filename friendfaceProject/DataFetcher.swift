@@ -4,35 +4,51 @@
 //
 //  Created by Андрей Завадский on 28.02.2025.
 //
-
+import SwiftData
 import Foundation
 
-class DataFetcher: ObservableObject {
-    @Published var users: [User] = []
+@MainActor
+class DataFetcher {
+    static func loadDataIfNeeded(modelContext: ModelContext) async {
+        let fetchDescriptor = FetchDescriptor<User>()
 
-    func loadData() {
-        guard users.isEmpty else { return } // Проверяем, загружены ли уже данные
+        do {
+            let users = try modelContext.fetch(fetchDescriptor)
+            if !users.isEmpty { return } // Если данные уже есть, выходим
 
-        let urlString = "https://www.hackingwithswift.com/samples/friendface.json"
-        guard let url = URL(string: urlString) else { return }
+            print("Загружаем данные с сервера...")
 
-        URLSession.shared.dataTask(with: url) { data, response, error in
-            guard let data = data, error == nil else {
-                print("Ошибка загрузки данных: \(error?.localizedDescription ?? "Неизвестная ошибка")")
-                return
+            let urlString = "https://www.hackingwithswift.com/samples/friendface.json"
+            guard let url = URL(string: urlString) else { return }
+
+            let (data, _) = try await URLSession.shared.data(from: url)
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let decodedUsers = try decoder.decode([CodableUser].self, from: data)
+
+            // Конвертируем CodableUser → User и сохраняем в SwiftData
+            for codableUser in decodedUsers {
+                let user = User(
+                    id: codableUser.id,
+                    name: codableUser.name,
+                    isActive: codableUser.isActive,
+                    age: codableUser.age,
+                    company: codableUser.company,
+                    email: codableUser.email,
+                    address: codableUser.address,
+                    about: codableUser.about,
+                    registered: codableUser.registered,
+                    tags: codableUser.tags,
+                    friends: codableUser.friends.map { Friend(id: $0.id, name: $0.name) }
+                )
+                modelContext.insert(user)
             }
+            try modelContext.save()
 
-            do {
-                let decoder = JSONDecoder()
-                decoder.dateDecodingStrategy = .iso8601
-                let decodedUsers = try decoder.decode([User].self, from: data)
-                
-                DispatchQueue.main.async {
-                    self.users = decodedUsers
-                }
-            } catch {
-                print("Ошибка декодирования JSON: \(error)")
-            }
-        }.resume()
+            print("Данные загружены и сохранены!")
+
+        } catch {
+            print("Ошибка загрузки данных: \(error.localizedDescription)")
+        }
     }
 }

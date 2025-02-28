@@ -20,9 +20,10 @@ struct UserDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
-                Text(user.name)
-                    .font(.largeTitle)
-                    .bold()
+//                Text(user.name)
+//                    .font(.largeTitle)
+//                    .bold()
+//                    .border(.red, width: 1)
                 
                 Text("Age: \(user.age)")
                 Text("Company: \(user.company)")

@@ -4,15 +4,16 @@
 //
 //  Created by Андрей Завадский on 28.02.2025.
 //
-
+import SwiftData
 import SwiftUI
 
 struct UserListView: View {
-    @StateObject private var dataFetcher = DataFetcher()
+    @Environment(\.modelContext) private var modelContext
+    @Query private var users: [User]
 
     var body: some View {
         NavigationStack {
-            List(dataFetcher.users) { user in
+            List(users) { user in
                 NavigationLink(destination: UserDetailView(user: user)) {
                     HStack {
                         Circle()
@@ -30,8 +31,8 @@ struct UserListView: View {
                 }
             }
             .navigationTitle("Users")
-            .onAppear {
-                dataFetcher.loadData()
+            .task {
+                await DataFetcher.loadDataIfNeeded(modelContext: modelContext)
             }
         }
     }
@@ -39,4 +40,5 @@ struct UserListView: View {
 
 #Preview {
     UserListView()
+        .modelContainer(for: User.self, inMemory: true)
 }
